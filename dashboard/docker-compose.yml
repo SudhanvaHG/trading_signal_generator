@@ -34,7 +34,7 @@ services:
       - PYTHONPATH=/app:/prop_algo_src
     volumes:
       - backend_data:/app/data
-      - ../prop_algo:/prop_algo_src/prop_algo:ro
+      - ../prop_algo/prop_algo:/prop_algo_src/prop_algo:ro
     depends_on:
       redis:
         condition: service_healthy
