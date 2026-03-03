@@ -39,8 +39,8 @@ class StrategyConfig:
 
     # ATR for dynamic stops
     atr_period: int = 14                     # Standard 14 period (KEEP).
-    atr_sl_multiplier: float = 1.2           # DECREASED: Tighter stops (1.2x ATR) improve R:R slightly.
-    atr_tp_multiplier: float = 2.0           # ADJUSTED: Target 2x ATR for realistic profit taking.
+    atr_sl_multiplier: float = 0.4           # SCALP: 0.4x ATR gives tight, achievable stops (BTC ~$800-1000 away).
+    atr_tp_multiplier: float = 1.5           # SCALP: 1.5x ATR target — R:R = 3.75:1, realistic and reachable.
 
     # RR filter (mirrored from RiskConfig for strategy use)
     min_reward_risk_ratio: float = 1.5       # Mirrored adjusted RR.
