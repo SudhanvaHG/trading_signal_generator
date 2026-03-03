@@ -1,0 +1,38 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+websockets==12.0
+python-multipart==0.0.9
+pydantic==2.7.1
+pydantic-settings==2.3.0
+
+# Data & Trading
+yfinance==0.2.40
+pandas==2.2.2
+numpy==1.26.4
+scipy==1.13.1
+
+# Notifications
+python-telegram-bot==21.3
+aiosmtplib==3.0.1
+twilio==9.1.0
+httpx==0.27.0
+
+# Scheduling
+apscheduler==3.10.4
+
+# Database (SQLite for simplicity, easily swappable)
+sqlalchemy==2.0.30
+aiosqlite==0.20.0
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Caching
+redis==5.0.4
+aioredis==2.0.1
+
+# Utils
+python-dotenv==1.0.1
+orjson==3.10.3
+loguru==0.7.2

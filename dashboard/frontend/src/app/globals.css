@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #0B1017;
+  color: #E0E6ED;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #111827; }
+::-webkit-scrollbar-thumb { background: #1E2D3D; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+/* Recharts text */
+.recharts-text { font-family: 'JetBrains Mono', monospace !important; }
+
+/* Glow effects */
+.glow-green { box-shadow: 0 0 20px rgba(0,200,150,0.15); }
+.glow-red   { box-shadow: 0 0 20px rgba(255,71,87,0.15); }
+.glow-blue  { box-shadow: 0 0 20px rgba(59,130,246,0.15); }
+
+/* Pulse dot */
+@keyframes pulse-ring {
+  0%   { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.pulse-dot::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* Table row flash on new signal */
+@keyframes flash {
+  0%   { background: rgba(0,200,150,0.12); }
+  100% { background: transparent; }
+}
+.row-flash { animation: flash 2s ease-out; }

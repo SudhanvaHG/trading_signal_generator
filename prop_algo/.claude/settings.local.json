@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"D:\\\\prop_algo_trading_system\\\\prop_algo\")",
+      "Bash(dir:*)",
+      "Bash(git init)",
+      "Bash(git remote add origin https://github.com/SudhanvaHG/trading_signal_generator.git)",
+      "Bash(git add prop_algo/ dashboard/ .gitignore)"
+    ]
+  }
+}
