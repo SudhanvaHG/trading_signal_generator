@@ -16,9 +16,14 @@ import json
 # Local:  walk up to find the prop_algo package
 import os
 _docker_path = Path("/prop_algo_src")
-_local_path  = Path(__file__).parents[5]  # dashboard/backend/app/services -> root
+try:
+    # services(0) -> app(1) -> backend(2) -> dashboard(3) -> repo_root(4)
+    _local_path = Path(__file__).parents[4]
+except IndexError:
+    _local_path = None
+
 for _candidate in [_docker_path, _local_path]:
-    if (_candidate / "prop_algo").exists():
+    if _candidate and (_candidate / "prop_algo").exists():
         sys.path.insert(0, str(_candidate))
         break
 
