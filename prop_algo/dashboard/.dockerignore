@@ -1,0 +1,16 @@
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+**/.mypy_cache
+**/node_modules
+**/.next
+**/.env
+**/.env.local
+**/output/*.png
+**/output/*.csv
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/logs
+**/.git
