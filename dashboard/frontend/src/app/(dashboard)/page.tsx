@@ -208,7 +208,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Equity Curve (if backtest run) */}
-        {(backtestResult?.equity_curve?.length ?? 0) > 0 && (
+        {backtestResult && (backtestResult.equity_curve?.length ?? 0) > 0 && (
           <Card>
             <CardHeader
               title="Equity Curve"
