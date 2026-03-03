@@ -27,11 +27,19 @@ export interface BacktestResult {
   losses: number;
   win_rate_pct: number;
   max_drawdown_pct: number;
+  current_drawdown_pct?: number;
   challenge_passed: boolean;
+  challenge_target_pct?: number;
+  account_blown?: boolean;
   equity_curve: any[];
   trade_log: any[];
   strategy_breakdown: Record<string, any>;
   asset_breakdown: Record<string, any>;
+  approved_signals?: any[];
+  approved_signals_count?: number;
+  raw_signals_count?: number;
+  rejected_signals_count?: number;
+  data_status?: Record<string, any>;
 }
 
 interface ScanStatus {
