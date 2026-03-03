@@ -43,19 +43,23 @@ class TradeSignal:
         return abs(self.take_profit - self.entry_price)
 
     def to_dict(self) -> dict:
+        # Convert all values to JSON-serializable Python native types
+        # (strategy DataFrames yield numpy.float64/int64/bool_ which FastAPI can't serialize)
+        ts = self.timestamp
+        timestamp_str = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
         return {
-            "timestamp": self.timestamp,
-            "symbol": self.symbol,
+            "timestamp": timestamp_str,
+            "symbol": str(self.symbol),
             "signal": self.signal.value,
-            "strategy": self.strategy_name,
-            "entry": round(self.entry_price, 5),
-            "stop_loss": round(self.stop_loss, 5),
-            "take_profit": round(self.take_profit, 5),
-            "rr_ratio": round(self.risk_reward_ratio, 2),
-            "confidence": round(self.confidence, 2),
-            "trend": self.trend_direction,
-            "volume_ok": self.volume_confirmed,
-            "reason": self.reason,
+            "strategy": str(self.strategy_name),
+            "entry": float(round(float(self.entry_price), 5)),
+            "stop_loss": float(round(float(self.stop_loss), 5)),
+            "take_profit": float(round(float(self.take_profit), 5)),
+            "rr_ratio": float(round(float(self.risk_reward_ratio), 2)),
+            "confidence": float(round(float(self.confidence), 2)),
+            "trend": int(self.trend_direction),
+            "volume_ok": bool(self.volume_confirmed),
+            "reason": str(self.reason),
         }
 
 

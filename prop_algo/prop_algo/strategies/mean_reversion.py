@@ -29,8 +29,8 @@ class MeanReversionStrategy(BaseStrategy):
         super().__init__(name="Mean_Reversion")
         self.config = config or DEFAULT_STRATEGY
         self.range_period = 30               # Bars to define range
-        self.range_threshold_atr = 4.0       # Max range width in ATR units
-        self.boundary_zone_pct = 0.10        # Top/bottom 10% of range
+        self.range_threshold_atr = 6.0       # Max range width in ATR units (raised from 4 — crypto/gold daily ranges are wide)
+        self.boundary_zone_pct = 0.15        # Top/bottom 15% of range (raised from 10% — easier to trigger at boundary)
         self.min_range_bars = 15             # Min bars in range to validate
 
     def _identify_range(self, df: pd.DataFrame, idx: int):
@@ -108,10 +108,10 @@ class MeanReversionStrategy(BaseStrategy):
                     entry = row["close"]
                     sl = range_low - atr * 0.5  # Just outside range
                     risk = entry - sl
-                    tp = mid_range  # Target mid-range
+                    tp = range_high - boundary_zone  # Target opposite boundary (full range = higher RR)
                     rr = abs(tp - entry) / risk if risk > 0 else 0
 
-                    if rr >= 1.0:  # Mean reversion can accept 1:1
+                    if rr >= 2.0:  # Must satisfy risk manager minimum 1:2 RR
                         confidence = 0.5
                         if row.get("volume_ratio", 1) < 1.0:
                             confidence += 0.10  # Low volume = still ranging
@@ -129,7 +129,7 @@ class MeanReversionStrategy(BaseStrategy):
                             take_profit=tp,
                             risk_reward_ratio=rr,
                             confidence=confidence,
-                            reason=f"Mean reversion BUY at range low ({range_low:.2f}). Target mid-range.",
+                            reason=f"Mean reversion BUY at range low ({range_low:.2f}). Target range high ({range_high:.2f}).",
                             atr_value=atr,
                             trend_direction=0,
                             volume_confirmed=row.get("volume_ratio", 1) < 1.2,
@@ -141,10 +141,10 @@ class MeanReversionStrategy(BaseStrategy):
                     entry = row["close"]
                     sl = range_high + atr * 0.5
                     risk = sl - entry
-                    tp = mid_range
+                    tp = range_low + boundary_zone  # Target opposite boundary (full range = higher RR)
                     rr = abs(entry - tp) / risk if risk > 0 else 0
 
-                    if rr >= 1.0:
+                    if rr >= 2.0:  # Must satisfy risk manager minimum 1:2 RR
                         confidence = 0.5
                         if row.get("volume_ratio", 1) < 1.0:
                             confidence += 0.10
@@ -162,7 +162,7 @@ class MeanReversionStrategy(BaseStrategy):
                             take_profit=tp,
                             risk_reward_ratio=rr,
                             confidence=confidence,
-                            reason=f"Mean reversion SELL at range high ({range_high:.2f}). Target mid-range.",
+                            reason=f"Mean reversion SELL at range high ({range_high:.2f}). Target range low ({range_low:.2f}).",
                             atr_value=atr,
                             trend_direction=0,
                             volume_confirmed=row.get("volume_ratio", 1) < 1.2,

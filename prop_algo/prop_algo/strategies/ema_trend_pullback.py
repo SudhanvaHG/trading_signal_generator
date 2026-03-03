@@ -31,7 +31,7 @@ class EMATrendPullbackStrategy(BaseStrategy):
     def __init__(self, config=None):
         super().__init__(name="EMA_Trend_Pullback")
         self.config = config or DEFAULT_STRATEGY
-        self.pullback_zone_atr_factor = 1.0  # How close to 50 EMA counts as pullback
+        self.pullback_zone_atr_factor = 2.0  # How close to 50 EMA counts as pullback (2×ATR gives a wider zone on daily bars)
 
     def _is_pullback_to_ema(self, row, direction: int) -> bool:
         """Check if price has pulled back near the 50 EMA zone."""

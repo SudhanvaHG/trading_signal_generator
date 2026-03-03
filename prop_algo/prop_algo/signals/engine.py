@@ -173,11 +173,13 @@ class SignalEngine:
         return self.risk_manager.get_summary()
 
     def run_signals_only(
-        self, period: str = "3mo", interval: str = "1d"
+        self, period: str = "1y", interval: str = "1d"
     ) -> dict:
         """
         Fetch data + generate + filter signals. No backtest.
         Used for real-time / live signal monitoring.
+        Note: needs at least 1y of data so the 200-EMA warms up properly
+        (strategies skip bars until ema_slow_period + 10 = 210 bars loaded).
         """
         logger.info("=" * 60)
         logger.info("PROP ALGO — LIVE SIGNAL SCAN")
