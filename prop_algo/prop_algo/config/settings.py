@@ -31,8 +31,8 @@ class StrategyConfig:
     # Breakout + Retest
     lookback_period: int = 20                # Bars to find prev day high/low
     retest_tolerance_pct: float = 0.5       # % tolerance for retest zone
-    breakout_min_body_pct: float = 0.35      # Min candle body % for confirmation
-    volume_expansion_factor: float = 1.2     # Volume must be 1.2x avg
+    breakout_min_body_pct: float = 0.25      # Min candle body % for confirmation (lowered from 0.35 — more candles qualify)
+    volume_expansion_factor: float = 1.0     # Volume must be 1.0x avg (lowered from 1.2 — yfinance daily volume is noisy)
 
     # Engulfing Pattern
     engulfing_min_body_ratio: float = 1.0    # Engulfing body >= prev body

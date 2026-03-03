@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     INITIAL_BALANCE: float = 10000.0
     DEFAULT_ASSETS: List[str] = ["XAUUSD", "BTCUSD", "XRPUSD", "EURUSD"]
     LIVE_SCAN_INTERVAL: int = 60          # seconds between live scans
-    DATA_PERIOD_LIVE: str = "3mo"
+    DATA_PERIOD_LIVE: str = "1y"          # needs ≥210 bars for 200-EMA warmup
     DATA_PERIOD_BACKTEST: str = "1y"
     DATA_INTERVAL: str = "1d"
 

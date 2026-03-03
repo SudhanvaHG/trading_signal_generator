@@ -58,7 +58,7 @@ class TradingEngineService:
 
     async def run_single_scan(
         self,
-        period: str = "3mo",
+        period: str = "1y",
         interval: str = "1d",
     ) -> dict:
         """
