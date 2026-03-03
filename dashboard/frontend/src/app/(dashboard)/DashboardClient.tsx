@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Header } from '@/components/dashboard/Header';
 import { StatCard } from '@/components/ui/StatCard';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -10,10 +10,11 @@ import { useStore } from '@/store/useStore';
 import {
   fetchLatestSignals, fetchScanStatus, fetchAllSettings,
   fetchBacktestResult, fetchSignalSummary,
+  runBacktest, fetchBacktestStatus,
 } from '@/lib/api';
 import {
   TrendingUp, TrendingDown, Target, Shield,
-  BarChart2, Activity, Zap,
+  BarChart2, Activity, Zap, PlayCircle, Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 
@@ -26,6 +27,10 @@ export default function DashboardClient() {
 
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isRunningBacktest, setIsRunningBacktest] = useState(false);
+  const [btPeriod, setBtPeriod] = useState('1y');
+  const [btStatus, setBtStatus] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -59,6 +64,44 @@ export default function DashboardClient() {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleRunBacktest = async () => {
+    if (isRunningBacktest) return;
+    setIsRunningBacktest(true);
+    setBtStatus('Starting backtest…');
+
+    // Clear any leftover poll
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    try {
+      await runBacktest({ period: btPeriod, timeframe: '1d', initial_balance: 10000 });
+      setBtStatus('Running — fetching data & simulating trades…');
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const status = await fetchBacktestStatus();
+          if (!status.running && status.has_result) {
+            clearInterval(pollRef.current!);
+            pollRef.current = null;
+            const result = await fetchBacktestResult();
+            setBacktestResult(result);
+            setIsRunningBacktest(false);
+            setBtStatus('');
+          } else if (status.running) {
+            setBtStatus('Running — simulating trades…');
+          }
+        } catch {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setIsRunningBacktest(false);
+          setBtStatus('Error fetching status.');
+        }
+      }, 2000);
+    } catch (err) {
+      setIsRunningBacktest(false);
+      setBtStatus('Failed to start backtest.');
+    }
+  };
 
   const displaySignals = [...liveSignals, ...signals].slice(0, 50);
   const buyCount = displaySignals.filter(s => s.signal === 'BUY').length;
@@ -190,11 +233,11 @@ export default function DashboardClient() {
               <CardHeader title="Risk Rules" subtitle="Active constraints" />
               <div className="space-y-1.5 text-xs font-mono">
                 {[
-                  ['Risk / Trade', '0.5%'],
-                  ['Max Trades/Day', '2'],
-                  ['Daily Loss Cap', '2%'],
+                  ['Risk / Trade', '1.0%'],
+                  ['Max Trades/Day', '3'],
+                  ['Daily Loss Cap', '3%'],
                   ['Max Drawdown', '8%'],
-                  ['Min R:R', '1:2'],
+                  ['Min R:R', '1:1.5'],
                   ['Challenge Target', '10%'],
                 ].map(([label, val]) => (
                   <div key={label} className="flex justify-between">
@@ -202,6 +245,79 @@ export default function DashboardClient() {
                     <span className="text-accent-green font-semibold">{val}</span>
                   </div>
                 ))}
+              </div>
+            </Card>
+
+            {/* Run Backtest */}
+            <Card>
+              <CardHeader
+                title="Backtest"
+                subtitle={backtestResult ? `Last: ${backtestResult.period} ${backtestResult.timeframe}` : 'Simulate over historical data'}
+              />
+              <div className="space-y-3">
+                {/* Period selector */}
+                <div>
+                  <label className="block text-xs text-text-secondary mb-1">Period</label>
+                  <select
+                    value={btPeriod}
+                    onChange={e => setBtPeriod(e.target.value)}
+                    disabled={isRunningBacktest}
+                    className="w-full bg-bg-secondary border border-bg-border rounded-md px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-blue disabled:opacity-50"
+                  >
+                    {['1mo', '3mo', '6mo', '1y'].map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Run button */}
+                <button
+                  onClick={handleRunBacktest}
+                  disabled={isRunningBacktest}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-semibold bg-accent-blue text-white hover:bg-blue-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isRunningBacktest
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Running…</>
+                    : <><PlayCircle className="w-4 h-4" /> Run Backtest</>
+                  }
+                </button>
+
+                {/* Status text */}
+                {btStatus && (
+                  <p className="text-xs text-text-secondary text-center">{btStatus}</p>
+                )}
+
+                {/* Quick result summary */}
+                {backtestResult && !isRunningBacktest && (
+                  <div className="space-y-1 pt-1 border-t border-bg-border text-xs font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Return</span>
+                      <span className={backtestResult.total_return_pct >= 0 ? 'text-accent-green font-semibold' : 'text-accent-red font-semibold'}>
+                        {backtestResult.total_return_pct > 0 ? '+' : ''}{backtestResult.total_return_pct?.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Win Rate</span>
+                      <span className="text-text-primary">{backtestResult.win_rate_pct?.toFixed(1)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Trades</span>
+                      <span className="text-text-primary">{backtestResult.total_trades}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Max DD</span>
+                      <span className={backtestResult.max_drawdown_pct < 5 ? 'text-accent-green' : backtestResult.max_drawdown_pct < 8 ? 'text-accent-yellow' : 'text-accent-red'}>
+                        {backtestResult.max_drawdown_pct?.toFixed(2)}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-text-secondary">Challenge</span>
+                      <span className={backtestResult.challenge_passed ? 'text-accent-green font-semibold' : 'text-accent-yellow'}>
+                        {backtestResult.challenge_passed ? 'Passed ✓' : 'In Progress'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           </div>

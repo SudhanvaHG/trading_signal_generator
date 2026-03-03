@@ -67,7 +67,7 @@ async def _run_backtest_task(period: str, timeframe: str, initial_balance: float
 
         result = await trading_engine.run_backtest(
             period=period,
-            timeframe=timeframe,
+            interval=timeframe,
             initial_balance=initial_balance,
             progress_callback=progress_cb,
         )

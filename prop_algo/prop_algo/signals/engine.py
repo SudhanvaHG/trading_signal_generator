@@ -180,6 +180,8 @@ class SignalEngine:
         Used for real-time / live signal monitoring.
         Note: needs at least 1y of data so the 200-EMA warms up properly
         (strategies skip bars until ema_slow_period + 10 = 210 bars loaded).
+        Only returns signals from the most recent 3 bars so the dashboard
+        shows actionable *current* ideas, not week-old setups.
         """
         logger.info("=" * 60)
         logger.info("PROP ALGO — LIVE SIGNAL SCAN")
@@ -194,10 +196,25 @@ class SignalEngine:
         logger.info("[3/3] Filtering through risk manager...")
         approved = self.filter_signals()
 
+        # ─── Keep only the freshest signals (latest 3 trading days) ──────
+        # The engine scans all historical bars, but for live monitoring we
+        # only want signals that correspond to the most recent market data.
+        total_before_date_filter = len(self.approved_signals)
+        if self.approved_signals:
+            latest_ts = max(s.timestamp for s in self.approved_signals)
+            cutoff = latest_ts - pd.Timedelta(days=3)
+            self.approved_signals = [
+                s for s in self.approved_signals if s.timestamp >= cutoff
+            ]
+            logger.info(
+                f"Date filter: kept {len(self.approved_signals)}/{total_before_date_filter} "
+                f"signals dated >= {cutoff.date()} (latest bar: {latest_ts.date()})"
+            )
+
         return {
             "data_status": data_results,
             "raw_signals_count": len(raw_signals),
-            "approved_signals_count": len(approved),
+            "approved_signals_count": len(self.approved_signals),
             "rejected_signals_count": len(self.rejected_signals),
         }
 
