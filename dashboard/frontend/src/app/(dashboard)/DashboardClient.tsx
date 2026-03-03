@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 
-export default function DashboardPage() {
+export default function DashboardClient() {
   const {
     signals, setSignals, setScanStatus, setSettings,
     setBacktestResult, backtestResult, liveSignals,
