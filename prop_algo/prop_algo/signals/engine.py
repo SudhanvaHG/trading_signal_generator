@@ -59,8 +59,17 @@ class SignalEngine:
         self.approved_signals: List[TradeSignal] = []
         self.rejected_signals: List[dict] = []
 
-    def fetch_all_data(self, period: str = "1y", interval: str = "1d") -> dict:
-        """Fetch data for all configured assets. Falls back to synthetic data."""
+    def fetch_all_data(
+        self,
+        period: str = "1y",
+        interval: str = "1d",
+        start: str = None,
+        end: str = None,
+    ) -> dict:
+        """Fetch data for all configured assets. Falls back to synthetic data.
+        When start AND end are provided they override period (passed to yfinance
+        as explicit date strings, e.g. '2025-01-01' / '2026-03-01').
+        """
         results = {}
         for key in self.asset_keys:
             if key not in ASSETS:
@@ -72,6 +81,8 @@ class SignalEngine:
                 ticker=asset.yf_ticker,
                 period=period,
                 interval=interval,
+                start=start if (start and end) else None,
+                end=end if (start and end) else None,
             )
 
             # Fallback to synthetic data if live fetch fails
@@ -219,7 +230,11 @@ class SignalEngine:
         }
 
     def run_full_pipeline(
-        self, period: str = "1y", interval: str = "1d"
+        self,
+        period: str = "1y",
+        interval: str = "1d",
+        start: str = None,
+        end: str = None,
     ) -> dict:
         """
         Execute the complete pipeline:
@@ -235,7 +250,7 @@ class SignalEngine:
 
         # Step 1
         logger.info("\n[1/4] Fetching market data...")
-        data_results = self.fetch_all_data(period, interval)
+        data_results = self.fetch_all_data(period, interval, start=start, end=end)
 
         # Step 2
         logger.info("\n[2/4] Generating signals from all strategies...")

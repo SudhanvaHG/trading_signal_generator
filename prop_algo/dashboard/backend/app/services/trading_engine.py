@@ -10,15 +10,22 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional
 import json
+import numpy as np
+import pandas as pd
 
 # Add prop_algo to path — works both locally and inside Docker
 # Docker: PYTHONPATH=/app:/prop_algo_src is set via environment
 # Local:  walk up to find the prop_algo package
 import os
 _docker_path = Path("/prop_algo_src")
-_local_path  = Path(__file__).parents[5]  # dashboard/backend/app/services -> root
+try:
+    # services(0) -> app(1) -> backend(2) -> dashboard(3) -> repo_root(4)
+    _local_path = Path(__file__).parents[4]
+except IndexError:
+    _local_path = None
+
 for _candidate in [_docker_path, _local_path]:
-    if (_candidate / "prop_algo").exists():
+    if _candidate and (_candidate / "prop_algo").exists():
         sys.path.insert(0, str(_candidate))
         break
 
@@ -43,9 +50,13 @@ class TradingEngineService:
         self._engine: Optional[SignalEngine] = None
         self._scan_task: Optional[asyncio.Task] = None
 
-    def _build_engine(self, initial_balance: float = 10000.0) -> SignalEngine:
+    def _build_engine(
+        self,
+        initial_balance: float = 10000.0,
+        assets: Optional[List[str]] = None,
+    ) -> SignalEngine:
         return SignalEngine(
-            assets=["XAUUSD", "BTCUSD", "XRPUSD", "EURUSD"],
+            assets=assets or ["XAUUSD", "BTCUSD", "XRPUSD", "EURUSD"],
             risk_config=DEFAULT_RISK,
             strategy_config=DEFAULT_STRATEGY,
             initial_balance=initial_balance,
@@ -53,7 +64,7 @@ class TradingEngineService:
 
     async def run_single_scan(
         self,
-        period: str = "3mo",
+        period: str = "1y",
         interval: str = "1d",
     ) -> dict:
         """
@@ -96,10 +107,15 @@ class TradingEngineService:
         period: str = "1y",
         interval: str = "1d",
         initial_balance: float = 10000.0,
+        symbols: Optional[List[str]] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
         progress_callback=None,
     ) -> dict:
         """
         Run full backtest pipeline. Returns comprehensive results.
+        Accepts optional symbol list and custom date range (start_date/end_date
+        override the period when both are provided).
         """
         loop = asyncio.get_event_loop()
 
@@ -109,14 +125,19 @@ class TradingEngineService:
                     progress_callback(10, "Initializing engine..."), loop
                 )
 
-            engine = self._build_engine(initial_balance)
+            engine = self._build_engine(initial_balance, assets=symbols)
 
             if progress_callback:
                 asyncio.run_coroutine_threadsafe(
                     progress_callback(20, "Fetching market data..."), loop
                 )
 
-            results = engine.run_full_pipeline(period=period, interval=interval)
+            results = engine.run_full_pipeline(
+                period=period,
+                interval=interval,
+                start=start_date,
+                end=end_date,
+            )
 
             if progress_callback:
                 asyncio.run_coroutine_threadsafe(
@@ -135,32 +156,40 @@ class TradingEngineService:
 
         summary = results["backtest_summary"]
 
-        return {
+        # ─── Sanitize: convert ALL numpy/pandas types to plain Python ─────
+        # The result is stored in memory and then serialized by FastAPI.
+        # numpy.float64, numpy.bool_, pd.Timestamp etc. all cause 500 errors
+        # unless they are converted to Python-native types first.
+        raw = {
             "run_at": datetime.utcnow().isoformat(),
             "period": period,
             "timeframe": interval,
-            "initial_balance": initial_balance,
-            "final_balance": summary["current_balance"],
-            "total_return_pct": summary["total_return_pct"],
-            "total_trades": summary["total_trades"],
-            "wins": summary["wins"],
-            "losses": summary["losses"],
-            "win_rate_pct": summary["win_rate_pct"],
-            "max_drawdown_pct": summary["max_drawdown_pct"],
-            "current_drawdown_pct": summary["current_drawdown_pct"],
-            "challenge_passed": summary["challenge_passed"],
-            "challenge_target_pct": summary["challenge_target_pct"],
-            "account_blown": summary["account_blown"],
-            "approved_signals": signals,
-            "raw_signals_count": results["raw_signals_count"],
-            "approved_signals_count": results["approved_signals_count"],
-            "rejected_signals_count": results["rejected_signals_count"],
+            "symbols": symbols or ["XAUUSD", "BTCUSD", "XRPUSD", "EURUSD"],
+            "start_date": start_date,
+            "end_date": end_date,
+            "initial_balance": float(initial_balance),
+            "final_balance": float(summary["current_balance"]),
+            "total_return_pct": float(summary["total_return_pct"]),
+            "total_trades": int(summary["total_trades"]),
+            "wins": int(summary["wins"]),
+            "losses": int(summary["losses"]),
+            "win_rate_pct": float(summary["win_rate_pct"]),
+            "max_drawdown_pct": float(summary["max_drawdown_pct"]),
+            "current_drawdown_pct": float(summary["current_drawdown_pct"]),
+            "challenge_passed": bool(summary["challenge_passed"]),
+            "challenge_target_pct": float(summary["challenge_target_pct"]),
+            "account_blown": bool(summary["account_blown"]),
+            "approved_signals": signals,  # already sanitized by to_dict()
+            "raw_signals_count": int(results["raw_signals_count"]),
+            "approved_signals_count": int(results["approved_signals_count"]),
+            "rejected_signals_count": int(results["rejected_signals_count"]),
             "data_status": results["data_status"],
-            "trade_log": trade_log,
+            "trade_log": _sanitize(trade_log),
             "equity_curve": _build_equity_curve(trade_log, initial_balance),
             "strategy_breakdown": _build_strategy_breakdown(signals),
             "asset_breakdown": _build_asset_breakdown(signals),
         }
+        return raw
 
     def get_risk_config(self) -> dict:
         return {
@@ -202,6 +231,30 @@ class TradingEngineService:
         }
 
 
+def _sanitize(obj):
+    """
+    Recursively convert numpy/pandas types to JSON-serializable Python types.
+    numpy.float64, numpy.bool_, pd.Timestamp etc. all cause FastAPI 500 errors.
+    """
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_sanitize(v) for v in obj]
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, pd.Timestamp):
+        return obj.isoformat()
+    if isinstance(obj, pd.DataFrame):
+        return _sanitize(obj.to_dict("records"))
+    return obj
+
+
 def _build_equity_curve(trade_log: list, initial_balance: float) -> list:
     """Build equity curve data points from trade log."""
     curve = [{"trade": 0, "balance": initial_balance, "drawdown": 0.0}]
@@ -214,11 +267,11 @@ def _build_equity_curve(trade_log: list, initial_balance: float) -> list:
         dd = (peak - balance) / peak * 100 if peak > 0 else 0
         curve.append({
             "trade": i,
-            "balance": round(balance, 2),
-            "drawdown": round(dd, 2),
-            "symbol": trade.get("symbol", ""),
-            "result": trade.get("result", ""),
-            "pnl_pct": trade.get("pnl_pct", 0),
+            "balance": round(float(balance), 2),
+            "drawdown": round(float(dd), 2),
+            "symbol": str(trade.get("symbol", "")),
+            "result": str(trade.get("result", "")),
+            "pnl_pct": float(trade.get("pnl_pct", 0)),
             "timestamp": str(trade.get("timestamp", "")),
         })
 

@@ -27,8 +27,14 @@ export const setScanInterval = (seconds: number) =>
   api.put('/signals/scan-interval', null, { params: { seconds } }).then(r => r.data);
 
 // ─── Backtest ─────────────────────────────────────────────────────────
-export const runBacktest = (data: { period: string; timeframe: string; initial_balance: number }) =>
-  api.post('/backtest/run', data).then(r => r.data);
+export const runBacktest = (data: {
+  period: string;
+  timeframe: string;
+  initial_balance: number;
+  symbols?: string[];
+  start_date?: string | null;
+  end_date?: string | null;
+}) => api.post('/backtest/run', data).then(r => r.data);
 
 export const fetchBacktestStatus = () =>
   api.get('/backtest/status').then(r => r.data);
