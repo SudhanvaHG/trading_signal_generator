@@ -19,6 +19,9 @@ export interface BacktestResult {
   run_at: string;
   period: string;
   timeframe: string;
+  symbols?: string[];
+  start_date?: string | null;
+  end_date?: string | null;
   initial_balance: number;
   final_balance: number;
   total_return_pct: number;
