@@ -14,18 +14,21 @@ import numpy as np
 import pandas as pd
 
 # Add prop_algo to path — works both locally and inside Docker
-# Docker: PYTHONPATH=/app:/prop_algo_src is set via environment
-# Local:  walk up to find the prop_algo package
+# Docker volume mount: ../prop_algo/prop_algo -> /prop_algo_src/prop_algo
+#   so /prop_algo_src/prop_algo/ contains dashboard/ and prop_algo/ (the package)
+#   => we must add /prop_algo_src/prop_algo to sys.path, not /prop_algo_src
+# Local: walk up to D:\prop_algo_trading_system, then descend prop_algo/prop_algo
 import os
-_docker_path = Path("/prop_algo_src")
+_docker_path = Path("/prop_algo_src/prop_algo")
 try:
-    # services(0) -> app(1) -> backend(2) -> dashboard(3) -> repo_root(4)
-    _local_path = Path(__file__).parents[4]
+    # services(0)->app(1)->backend(2)->dashboard(3)->D:\prop_algo_trading_system(4)
+    # then go into prop_algo/prop_algo which contains the actual package
+    _local_path = Path(__file__).parents[4] / "prop_algo" / "prop_algo"
 except IndexError:
     _local_path = None
 
 for _candidate in [_docker_path, _local_path]:
-    if _candidate and (_candidate / "prop_algo").exists():
+    if _candidate and (_candidate / "prop_algo" / "__init__.py").exists():
         sys.path.insert(0, str(_candidate))
         break
 
